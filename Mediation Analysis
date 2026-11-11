@@ -1,0 +1,51 @@
+# Mediation models: Section 3.2 (behavioural) and Section 3.5 (modelled)
+# Marques et al. (2026) - preregistration: https://osf.io/qh4c6
+
+library(lavaan)
+
+# Data (not included, see README) ---------------------------------------------
+dat <- read.csv("data.csv", check.names = FALSE)
+names(dat) <- gsub("-", "_", names(dat))
+params <- c("learning_rate", "pers", "eta3_wm", "eta6_wm")
+dat[params] <- lapply(dat[params], function(x) as.numeric(gsub(",", ".", x)))
+stopifnot(nrow(dat) == 110)  # participants above the 75% task cut-off
+
+fit_boot <- function(model) {
+  set.seed(2026)  # fixed seed: bootstrap results are reproducible
+  sem(model, data = dat, se = "bootstrap", bootstrap = 5000, missing = "fiml")
+}
+
+show <- function(fit) {
+  pe <- parameterEstimates(fit, standardized = TRUE, boot.ci.type = "perc")
+  print(pe[pe$op %in% c("~", ":="),
+           c("lhs", "op", "rhs", "label", "est", "se", "pvalue",
+             "ci.lower", "ci.upper", "std.all")], digits = 3)
+}
+
+# Section 3.2 - FS -> 3-back -> learning under low (3) and high (6) load ------
+model_behavioural <- '
+  NB3        ~ a*FS_BAS_CW
+  Pcorrect_6 ~ b1*NB3 + c1*FS_BAS_CW
+  Pcorrect_3 ~ b2*NB3 + c2*FS_BAS_CW
+  Pcorrect_6 ~~ Pcorrect_3
+
+  indirect_P6 := a*b1
+  indirect_P3 := a*b2
+  total_P6    := c1 + a*b1
+  total_P3    := c2 + a*b2
+'
+show(fit_boot(model_behavioural))
+
+# Section 3.5 - FS -> eta3 / eta6 -> learning rate (parallel mediators) -------
+model_modelled <- '
+  eta3_wm       ~ a1*FS_BAS_CW
+  eta6_wm       ~ a2*FS_BAS_CW
+  learning_rate ~ b1*eta3_wm + b2*eta6_wm + c*FS_BAS_CW
+  eta3_wm ~~ eta6_wm
+
+  indirect_eta3  := a1*b1
+  indirect_eta6  := a2*b2
+  indirect_total := a1*b1 + a2*b2
+  total          := c + a1*b1 + a2*b2
+'
+show(fit_boot(model_modelled))
