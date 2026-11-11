@@ -1,0 +1,29 @@
+# Table 1 (Pearson) and Table 2 (Spearman)
+# Marques et al. (2026) - preregistration: https://osf.io/qh4c6
+
+library(psych)
+
+# Data (not included, see README) ---------------------------------------------
+dat <- read.csv("data.csv", check.names = FALSE)
+names(dat) <- gsub("-", "_", names(dat))
+params <- c("learning_rate", "pers", "eta3_wm", "eta6_wm")
+dat[params] <- lapply(dat[params], function(x) as.numeric(gsub(",", ".", x)))
+stopifnot(nrow(dat) == 110)  # participants above the 75% task cut-off
+
+self_report <- c("RI_BAS_PQ", "GDP_BAS_PQ",  # TODO: adjust GDP column name
+                 "RR_BAS_PQ", "Imp_BAS_PQ", "BIS_PQ", "FFFS_PQ",
+                 "DRIVE_BAS_CW", "FS_BAS_CW", "RR_BAS_CW", "BIS_CW", "BIS_11",
+                 "Depression_DASS", "Anxiety_DASS", "Stress_DASS", "Total_DASS")
+
+# Table 1 - Pearson: task performance -----------------------------------------
+t1 <- corr.test(dat[, c("Pcorrect_3", "Pcorrect_6", "Persistence_3",
+                        "Persistence_6", "NB2", "NB3", self_report)],
+                use = "pairwise", method = "pearson", adjust = "none")
+print(round(t1$r, 2))
+print(round(t1$p, 3))
+
+# Table 2 - Spearman: RLWMi + Deduction parameters ----------------------------
+t2 <- corr.test(dat[, c(params, self_report)],
+                use = "pairwise", method = "spearman", adjust = "none")
+print(round(t2$r, 2))
+print(round(t2$p, 3))
